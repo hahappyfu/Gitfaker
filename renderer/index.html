@@ -1,5 +1,55 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>GitFaker</title></head>
-<body><h1>GitFaker - Loading...</h1></body>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+  <title>GitFaker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎭 GitFaker</h1>
+      <p class="subtitle">Git Commit 生成器</p>
+    </header>
+
+    <div class="input-section">
+      <div class="form-group">
+        <label for="repoPath">仓库路径</label>
+        <div class="input-row">
+          <input type="text" id="repoPath" placeholder="例如：C:\Users\me\my-project">
+          <button id="browseBtn" class="btn-secondary">选择</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="commitCount">提交次数</label>
+          <input type="number" id="commitCount" value="50" min="1" max="10000">
+        </div>
+        <div class="form-group">
+          <label for="totalLines">代码行数</label>
+          <input type="number" id="totalLines" value="2000" min="1" max="1000000">
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="startBtn" class="btn-primary">🚀 开始生成</button>
+        <button id="stopBtn" class="btn-danger" disabled>⏹ 停止</button>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-header">
+        <span>命令日志</span>
+        <span id="stats">就绪</span>
+      </div>
+      <div id="logOutput" class="log-output">
+        <div class="log-placeholder">输入参数后点击「开始生成」</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
 </html>
