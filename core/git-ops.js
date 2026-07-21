@@ -121,6 +121,25 @@ function getFirstCommitDate(cwd) {
 }
 
 /**
+ * 获取默认分支名（main 或 master）
+ */
+function getDefaultBranch(cwd) {
+  try {
+    // 尝试从 remote HEAD 获取
+    const ref = runGit('symbolic-ref refs/remotes/origin/HEAD', cwd);
+    return ref.replace('refs/remotes/origin/', '');
+  } catch {
+    // 检查 main 是否存在
+    try {
+      runGit('rev-parse --verify main', cwd);
+      return 'main';
+    } catch {
+      return 'master';
+    }
+  }
+}
+
+/**
  * 获取当前分支名
  */
 function getCurrentBranch(cwd) {
@@ -130,5 +149,5 @@ function getCurrentBranch(cwd) {
 module.exports = {
   runGit, addAll, commit, commitWithDate, createBranch, checkout,
   merge, deleteBranch, push, isGitRepo, getFirstCommitDate, checkGitAvailable,
-  getCurrentBranch
+  getCurrentBranch, getDefaultBranch
 };

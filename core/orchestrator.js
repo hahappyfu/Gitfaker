@@ -71,8 +71,8 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
 
   resetFiles();
 
-  // 记录主分支名，后面 push 时需要切回来
-  const mainBranch = gitOps.getCurrentBranch(repoPath);
+  // 记录默认分支名，后面 push 时需要切回来
+  const mainBranch = gitOps.getDefaultBranch(repoPath);
 
   // 计算时间分布
   const firstCommitDate = gitOps.getFirstCommitDate(repoPath);

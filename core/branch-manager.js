@@ -39,7 +39,7 @@ function getBranchCommitCount() {
  * @returns {{ branchName: string, commitCount: number }}
  */
 function executeBranchWorkflow(repoRoot, commitFn, dates) {
-  const mainBranch = gitOps.getCurrentBranch(repoRoot);
+  const mainBranch = gitOps.getDefaultBranch(repoRoot);
   const branchName = generateBranchName();
   gitOps.createBranch(branchName, repoRoot);
 
