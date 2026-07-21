@@ -87,13 +87,16 @@ function deleteBranch(branchName, cwd) {
  * 设置 commit 时间戳（使用环境变量 GIT_AUTHOR_DATE 和 GIT_COMMITTER_DATE）
  */
 function commitWithDate(message, date, cwd) {
+  if (!date || isNaN(date.getTime())) {
+    date = new Date();
+  }
   const dateStr = date.toISOString();
-  const env = `GIT_AUTHOR_DATE="${dateStr}" GIT_COMMITTER_DATE="${dateStr}"`;
-  return execSync(`${env} ${GIT} commit -m "${message.replace(/"/g, '\\"')}"`, {
+  return execSync(`${GIT} commit -m "${message.replace(/"/g, '\\"')}"`, {
     cwd,
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
-    shell: true
+    shell: true,
+    env: { ...process.env, GIT_AUTHOR_DATE: dateStr, GIT_COMMITTER_DATE: dateStr }
   }).trim();
 }
 
@@ -150,11 +153,17 @@ function checkGitAvailable() {
  */
 function getFirstCommitDate(cwd) {
   try {
-    const output = runGit('log --reverse --format=%ai --diff-filter=A HEAD | head -1', cwd);
-    return new Date(output);
-  } catch {
-    return new Date();
-  }
+    const output = runGit('log --reverse --format=%ai --diff-filter=A HEAD', cwd);
+    const firstLine = output.split('\n')[0].trim();
+    if (firstLine) {
+      const date = new Date(firstLine);
+      if (!isNaN(date.getTime())) return date;
+    }
+  } catch {}
+  // fallback: 7 天前
+  const fallback = new Date();
+  fallback.setDate(fallback.getDate() - 7);
+  return fallback;
 }
 
 /**
