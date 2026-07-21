@@ -39,6 +39,7 @@ function getBranchCommitCount() {
  * @returns {{ branchName: string, commitCount: number }}
  */
 function executeBranchWorkflow(repoRoot, commitFn, dates) {
+  const mainBranch = gitOps.getCurrentBranch(repoRoot);
   const branchName = generateBranchName();
   gitOps.createBranch(branchName, repoRoot);
 
@@ -48,7 +49,7 @@ function executeBranchWorkflow(repoRoot, commitFn, dates) {
   }
 
   // 切回主分支并合并
-  gitOps.checkout('main', repoRoot);
+  gitOps.checkout(mainBranch, repoRoot);
   gitOps.merge(branchName, repoRoot);
   gitOps.deleteBranch(branchName, repoRoot);
 

@@ -120,7 +120,15 @@ function getFirstCommitDate(cwd) {
   }
 }
 
+/**
+ * 获取当前分支名
+ */
+function getCurrentBranch(cwd) {
+  return runGit('rev-parse --abbrev-ref HEAD', cwd);
+}
+
 module.exports = {
   runGit, addAll, commit, commitWithDate, createBranch, checkout,
-  merge, deleteBranch, push, isGitRepo, getFirstCommitDate, checkGitAvailable
+  merge, deleteBranch, push, isGitRepo, getFirstCommitDate, checkGitAvailable,
+  getCurrentBranch
 };
