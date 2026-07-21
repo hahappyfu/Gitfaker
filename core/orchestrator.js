@@ -51,9 +51,22 @@ function performSingleCommit(repoRoot, date, linesPerCommit) {
  * @param {AbortSignal} options.signal - 中断信号
  */
 async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signal }) {
+  // 检查 git 是否可用
+  if (!gitOps.checkGitAvailable()) {
+    throw new Error('未检测到 git 命令。请先安装 Git for Windows：https://git-scm.com/download/win');
+  }
+
   // 验证仓库
   if (!gitOps.isGitRepo(repoPath)) {
-    throw new Error(`${repoPath} 不是一个 git 仓库`);
+    // 进一步诊断
+    const fs = require('fs');
+    const gitDir = require('path').join(repoPath, '.git');
+    const hasGitDir = fs.existsSync(gitDir);
+    let detail = '';
+    if (!hasGitDir) {
+      detail = `\n目录下没有 .git 文件夹。请确认选择的是仓库根目录（包含 .git 的那个文件夹）。`;
+    }
+    throw new Error(`${repoPath} 不是一个 git 仓库${detail}`);
   }
 
   resetFiles();

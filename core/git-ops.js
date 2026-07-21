@@ -88,7 +88,20 @@ function push(cwd) {
  */
 function isGitRepo(cwd) {
   try {
-    runGit('rev-parse --is-inside-work-tree', cwd);
+    const result = runGit('rev-parse --is-inside-work-tree', cwd);
+    return result === 'true';
+  } catch (e) {
+    console.error('isGitRepo check failed:', e.message);
+    return false;
+  }
+}
+
+/**
+ * 检查 git 是否可用
+ */
+function checkGitAvailable() {
+  try {
+    execSync('git --version', { encoding: 'utf-8', stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -109,5 +122,5 @@ function getFirstCommitDate(cwd) {
 
 module.exports = {
   runGit, addAll, commit, commitWithDate, createBranch, checkout,
-  merge, deleteBranch, push, isGitRepo, getFirstCommitDate
+  merge, deleteBranch, push, isGitRepo, getFirstCommitDate, checkGitAvailable
 };
