@@ -3,19 +3,19 @@
 
 /* ─── Tokens ─── */
 :root {
-  --carbon:   #141820;
-  --panel:    #1e2535;
-  --surface:  #283040;
-  --border:   #354050;
-  --border-l: #455060;
-  --amber:    #e0a06c;
-  --amber-dim:#b87840;
-  --amber-glow: rgba(224, 160, 108, 0.15);
-  --phosphor: #8ccaa4;
-  --phosphor-dim: #6aaa80;
-  --muted:    #d0d8e8;
-  --text:     #f0f2f8;
-  --white:    #ffffff;
+  --carbon:   #e8e6e1;
+  --panel:    #f2f0eb;
+  --surface:  #faf9f6;
+  --border:   #d5d0c8;
+  --border-l: #c5c0b8;
+  --amber:    #b87840;
+  --amber-dim:#9a6030;
+  --amber-glow: rgba(184, 120, 64, 0.12);
+  --phosphor: #4a9a6a;
+  --phosphor-dim: #3a7a54;
+  --muted:    #6a6a68;
+  --text:     #2c2c2a;
+  --white:    #1a1a18;
   --red:      #c25c5c;
   --red-dim:  #8a3c3c;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
@@ -73,7 +73,7 @@ body {
   text-align: center;
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.5px;
 }
@@ -152,7 +152,7 @@ body {
 }
 
 .field-input::placeholder {
-  color: #5a6474;
+  color: #9a9a98;
 }
 
 .field-input-row .field-input { flex: 1; }
@@ -204,7 +204,7 @@ body {
 .btn-primary:active { background: var(--amber-dim); }
 .btn-primary:disabled {
   background: var(--surface);
-  color: #6a7484;
+  color: #aaa;
   cursor: not-allowed;
 }
 
@@ -262,7 +262,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--carbon);
+  background: var(--surface);
 }
 
 .terminal-chrome {
@@ -317,7 +317,7 @@ body {
 .terminal-body::-webkit-scrollbar { width: 6px; }
 .terminal-body::-webkit-scrollbar-track { background: transparent; }
 .terminal-body::-webkit-scrollbar-thumb { background: var(--border-l); border-radius: 3px; }
-.terminal-body::-webkit-scrollbar-thumb:hover { background: #3a4050; }
+.terminal-body::-webkit-scrollbar-thumb:hover { background: #aaa; }
 
 /* ─── Terminal Placeholder ─── */
 .terminal-placeholder {
@@ -342,7 +342,7 @@ body {
 }
 
 .placeholder-text {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -364,11 +364,11 @@ body {
   100% { background: transparent; }
 }
 
-.log-line.success   { color: #8ccaa4; }
-.log-line.warning   { color: #e0a06c; }
-.log-line.info      { color: #bcc4d4; }
-.log-line.branch    { color: #b8a4e0; }
-.log-line.dim       { color: #8892a4; }
+.log-line.success   { color: #3a8a5a; }
+.log-line.warning   { color: #b87840; }
+.log-line.info      { color: #6a6a68; }
+.log-line.branch    { color: #7a60b0; }
+.log-line.dim       { color: #9a9a98; }
 
 /* ─── Progress Bar ─── */
 .progress-bar {
