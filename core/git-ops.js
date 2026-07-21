@@ -1,4 +1,24 @@
 const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+// Windows 下自动查找 git 路径
+function getGitPath() {
+  if (process.platform !== 'win32') return 'git';
+  // 常见安装路径
+  const paths = [
+    'C:\\Program Files\\Git\\bin\\git.exe',
+    'C:\\Program Files (x86)\\Git\\bin\\git.exe',
+    path.join(process.env.LOCALAPPDATA || '', 'Git', 'bin', 'git.exe'),
+    path.join(process.env.ProgramFiles || '', 'Git', 'bin', 'git.exe'),
+  ];
+  for (const p of paths) {
+    if (fs.existsSync(p)) return `"${p}"`;
+  }
+  return 'git'; // fallback
+}
+
+const GIT = getGitPath();
 
 /**
  * 在指定目录执行 git 命令
@@ -7,10 +27,11 @@ const { execSync } = require('child_process');
  * @returns {string} 命令输出
  */
 function runGit(command, cwd) {
-  return execSync(`git ${command}`, {
+  return execSync(`${GIT} ${command}`, {
     cwd,
     encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
   }).trim();
 }
 
@@ -62,10 +83,11 @@ function deleteBranch(branchName, cwd) {
 function commitWithDate(message, date, cwd) {
   const dateStr = date.toISOString();
   const env = `GIT_AUTHOR_DATE="${dateStr}" GIT_COMMITTER_DATE="${dateStr}"`;
-  return execSync(`${env} git commit -m "${message.replace(/"/g, '\\"')}"`, {
+  return execSync(`${env} ${GIT} commit -m "${message.replace(/"/g, '\\"')}"`, {
     cwd,
     encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
   }).trim();
 }
 
@@ -100,12 +122,16 @@ function isGitRepo(cwd) {
  * 检查 git 是否可用
  */
 function checkGitAvailable() {
-  try {
-    execSync('git --version', { encoding: 'utf-8', stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
+  const commands = process.platform === 'win32'
+    ? [`${GIT} --version`, 'git.exe --version']
+    : ['git --version'];
+  for (const cmd of commands) {
+    try {
+      execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', shell: true });
+      return true;
+    } catch {}
   }
+  return false;
 }
 
 /**
