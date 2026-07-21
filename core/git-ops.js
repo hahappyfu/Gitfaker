@@ -13,8 +13,14 @@ function getGitPath() {
     path.join(process.env.ProgramFiles || '', 'Git', 'bin', 'git.exe'),
   ];
   for (const p of paths) {
-    if (fs.existsSync(p)) return `"${p}"`;
+    try {
+      if (fs.existsSync(p)) {
+        console.log('Found git at:', p);
+        return `"${p}"`;
+      }
+    } catch {}
   }
+  console.log('No git found in standard paths, falling back to "git"');
   return 'git'; // fallback
 }
 
@@ -122,15 +128,20 @@ function isGitRepo(cwd) {
  * 检查 git 是否可用
  */
 function checkGitAvailable() {
+  const debugInfo = [];
   const commands = process.platform === 'win32'
-    ? [`${GIT} --version`, 'git.exe --version']
+    ? [`${GIT} --version`, 'git.exe --version', 'git --version']
     : ['git --version'];
   for (const cmd of commands) {
     try {
-      execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', shell: true });
+      const result = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', shell: true });
+      debugInfo.push(`✅ ${cmd}: ${result.trim()}`);
       return true;
-    } catch {}
+    } catch (e) {
+      debugInfo.push(`❌ ${cmd}: ${e.message.split('\n')[0]}`);
+    }
   }
+  console.error('Git detection debug:', debugInfo.join('\n'));
   return false;
 }
 

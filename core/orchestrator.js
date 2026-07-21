@@ -53,7 +53,7 @@ function performSingleCommit(repoRoot, date, linesPerCommit) {
 async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signal }) {
   // 检查 git 是否可用
   if (!gitOps.checkGitAvailable()) {
-    throw new Error('未检测到 git 命令。请先安装 Git for Windows：https://git-scm.com/download/win');
+    throw new Error('未检测到 git 命令。\n\n可能原因：\n1. 未安装 Git for Windows\n2. 安装时未勾选"Add to PATH"\n3. 需要重启电脑\n\n下载 Git：https://git-scm.com/download/win');
   }
 
   // 验证仓库
