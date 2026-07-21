@@ -29,3 +29,41 @@ ipcMain.handle('select-directory', async () => {
   if (result.canceled) return null;
   return result.filePaths[0];
 });
+
+const { run } = require('./core/orchestrator');
+
+let currentAbortController = null;
+
+ipcMain.on('start-generation', async (event, options) => {
+  const { repoPath, commitCount, totalLines } = options;
+  const webContents = event.sender;
+
+  // 创建中断控制器
+  currentAbortController = new AbortController();
+
+  try {
+    const result = await run({
+      repoPath,
+      commitCount,
+      totalLines,
+      onLog: (msg) => webContents.send('log-message', msg),
+      onProgress: (data) => webContents.send('progress-update', data),
+      signal: currentAbortController.signal
+    });
+
+    webContents.send('generation-done', {
+      commits: result.completedCommits,
+      lines: result.generatedLines
+    });
+  } catch (e) {
+    webContents.send('generation-error', e.message);
+  } finally {
+    currentAbortController = null;
+  }
+});
+
+ipcMain.on('stop-generation', () => {
+  if (currentAbortController) {
+    currentAbortController.abort();
+  }
+});
