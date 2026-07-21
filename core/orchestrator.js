@@ -71,6 +71,9 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
 
   resetFiles();
 
+  // 记录主分支名，后面 push 时需要切回来
+  const mainBranch = gitOps.getCurrentBranch(repoPath);
+
   // 计算时间分布
   const firstCommitDate = gitOps.getFirstCommitDate(repoPath);
   const endDate = new Date();
@@ -148,6 +151,8 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
   onLog('---');
   onLog('📤 尝试 push 到远端...');
   try {
+    // 切回主分支再 push
+    gitOps.checkout(mainBranch, repoPath);
     gitOps.push(repoPath);
     onLog('✅ push 成功');
   } catch (e) {
