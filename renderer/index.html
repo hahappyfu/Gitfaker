@@ -2,51 +2,115 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:;">
   <title>GitFaker</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🎭 GitFaker</h1>
-      <p class="subtitle">Git Commit 生成器</p>
-    </header>
-
-    <div class="input-section">
-      <div class="form-group">
-        <label for="repoPath">仓库路径</label>
-        <div class="input-row">
-          <input type="text" id="repoPath" placeholder="例如：C:\Users\me\my-project">
-          <button id="browseBtn" class="btn-secondary">选择</button>
-        </div>
+  <div class="app">
+    <!-- 标题栏 -->
+    <div class="titlebar">
+      <div class="titlebar-dots">
+        <span class="dot dot-close"></span>
+        <span class="dot dot-min"></span>
+        <span class="dot dot-max"></span>
       </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="commitCount">提交次数</label>
-          <input type="number" id="commitCount" value="50" min="1" max="10000">
-        </div>
-        <div class="form-group">
-          <label for="totalLines">代码行数</label>
-          <input type="number" id="totalLines" value="2000" min="1" max="1000000">
-        </div>
-      </div>
-
-      <div class="button-row">
-        <button id="startBtn" class="btn-primary">🚀 开始生成</button>
-        <button id="stopBtn" class="btn-danger" disabled>⏹ 停止</button>
-      </div>
+      <div class="titlebar-text">GitFaker</div>
+      <div class="titlebar-spacer"></div>
     </div>
 
-    <div class="log-section">
-      <div class="log-header">
-        <span>命令日志</span>
-        <span id="stats">就绪</span>
-      </div>
-      <div id="logOutput" class="log-output">
-        <div class="log-placeholder">输入参数后点击「开始生成」</div>
-      </div>
+    <!-- 主内容 -->
+    <div class="main">
+      <!-- 左侧控制面板 -->
+      <aside class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">◆</span>
+          <span>参数配置</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="repoPath">目标仓库</label>
+          <div class="field-input-row">
+            <input type="text" id="repoPath" class="field-input" placeholder="选择 git 仓库路径">
+            <button id="browseBtn" class="btn-icon" title="浏览文件夹">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4.5V12a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3.5A1 1 0 005.8 3H3a1 1 0 00-1 1.5z" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="commitCount">提交次数</label>
+            <input type="number" id="commitCount" class="field-input" value="50" min="1" max="10000">
+          </div>
+          <div class="field">
+            <label class="field-label" for="totalLines">代码行数</label>
+            <input type="number" id="totalLines" class="field-input" value="2000" min="1" max="1000000">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="startBtn" class="btn-primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>
+            开始生成
+          </button>
+          <button id="stopBtn" class="btn-stop" disabled>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>
+            停止
+          </button>
+        </div>
+
+        <!-- 状态指示灯 -->
+        <div class="status-lights">
+          <div class="light" id="lightIdle">
+            <span class="light-dot light-amber"></span>
+            <span class="light-label">就绪</span>
+          </div>
+          <div class="light" id="lightRunning" style="display:none">
+            <span class="light-dot light-green pulse"></span>
+            <span class="light-label">运行中</span>
+          </div>
+          <div class="light" id="lightDone" style="display:none">
+            <span class="light-dot light-green"></span>
+            <span class="light-label">完成</span>
+          </div>
+          <div class="light" id="lightError" style="display:none">
+            <span class="light-dot light-red"></span>
+            <span class="light-label">错误</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧终端区域 -->
+      <section class="terminal-area">
+        <div class="terminal-chrome">
+          <div class="terminal-dots">
+            <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+          </div>
+          <div class="terminal-title">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 6 8 10 12 6"/></svg>
+            命令输出
+          </div>
+          <div class="terminal-stats" id="stats">等待输入</div>
+        </div>
+        <div class="terminal-body" id="logOutput">
+          <div class="terminal-placeholder">
+            <div class="placeholder-icon">>_</div>
+            <div class="placeholder-text">配置参数后点击「开始生成」</div>
+          </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-bar" id="progressBar" style="display:none">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <div class="progress-info">
+            <span id="progressCommits">0/0</span>
+            <span id="progressLines">0 行</span>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 

@@ -1,3 +1,4 @@
+// ─── DOM ───
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const browseBtn = document.getElementById('browseBtn');
@@ -6,90 +7,136 @@ const statsEl = document.getElementById('stats');
 const repoPathInput = document.getElementById('repoPath');
 const commitCountInput = document.getElementById('commitCount');
 const totalLinesInput = document.getElementById('totalLines');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const progressCommits = document.getElementById('progressCommits');
+const progressLines = document.getElementById('progressLines');
 
-// 清除占位内容
-function clearLog() {
-  logOutput.innerHTML = '';
+const lightIdle = document.getElementById('lightIdle');
+const lightRunning = document.getElementById('lightRunning');
+const lightDone = document.getElementById('lightDone');
+const lightError = document.getElementById('lightError');
+
+// ─── Status lights ───
+function setStatus(state) {
+  [lightIdle, lightRunning, lightDone, lightError].forEach(el => el.style.display = 'none');
+  const map = { idle: lightIdle, running: lightRunning, done: lightDone, error: lightError };
+  if (map[state]) map[state].style.display = 'flex';
 }
 
-// 添加日志行
+// ─── Log ───
+let logInitialized = false;
+
+function clearLog() {
+  logOutput.innerHTML = '';
+  logInitialized = false;
+}
+
 function addLog(text, type = '') {
+  if (!logInitialized) {
+    logOutput.innerHTML = '';
+    logInitialized = true;
+  }
+
   const line = document.createElement('div');
   line.className = `log-line ${type}`;
   line.textContent = text;
   logOutput.appendChild(line);
+
+  // 脉冲扫过动画
+  requestAnimationFrame(() => {
+    line.classList.add('flash');
+    setTimeout(() => line.classList.remove('flash'), 400);
+  });
+
   logOutput.scrollTop = logOutput.scrollHeight;
 }
 
-// 更新进度
-function updateStats(data) {
+// ─── Progress ───
+function updateProgress(data) {
   const pct = Math.round((data.completed / data.total) * 100);
-  statsEl.textContent = `${data.completed}/${data.total} commits | ${data.lines}/${data.targetLines} 行 | ${pct}%`;
+  progressFill.style.width = `${pct}%`;
+  progressCommits.textContent = `${data.completed} / ${data.total}`;
+  progressLines.textContent = `${data.lines.toLocaleString()} 行`;
+  statsEl.textContent = `${pct}% · ${data.completed}/${data.total}`;
 }
 
-// 浏览文件夹
+// ─── Browse folder ───
 browseBtn.addEventListener('click', async () => {
-  const path = await window.electronAPI.selectDirectory();
-  if (path) repoPathInput.value = path;
+  const p = await window.electronAPI.selectDirectory();
+  if (p) repoPathInput.value = p;
 });
 
-// 开始生成
+// ─── Start ───
 startBtn.addEventListener('click', () => {
   const repoPath = repoPathInput.value.trim();
   const commitCount = parseInt(commitCountInput.value, 10);
   const totalLines = parseInt(totalLinesInput.value, 10);
 
-  if (!repoPath) { addLog('❌ 请输入仓库路径', 'warning'); return; }
-  if (!commitCount || commitCount <= 0) { addLog('❌ 请输入有效的提交次数', 'warning'); return; }
-  if (!totalLines || totalLines <= 0) { addLog('❌ 请输入有效的代码行数', 'warning'); return; }
+  if (!repoPath) {
+    addLog('请输入仓库路径', 'warning');
+    return;
+  }
+  if (!commitCount || commitCount <= 0) {
+    addLog('请输入有效的提交次数', 'warning');
+    return;
+  }
+  if (!totalLines || totalLines <= 0) {
+    addLog('请输入有效的代码行数', 'warning');
+    return;
+  }
 
   clearLog();
-  addLog(`🚀 开始生成 | 仓库: ${repoPath} | 次数: ${commitCount} | 行数: ${totalLines}`, 'info');
+  progressBar.style.display = 'block';
+  progressFill.style.width = '0%';
+  setStatus('running');
+
+  addLog(`目标仓库  ${repoPath}`, 'dim');
+  addLog(`提交次数  ${commitCount}`, 'dim');
+  addLog(`代码行数  ${totalLines.toLocaleString()}`, 'dim');
+  addLog('─'.repeat(44), 'dim');
+  addLog('');
+
   startBtn.disabled = true;
   stopBtn.disabled = false;
 
-  // 发送开始信号给主进程（通过 IPC）
-  window.electronAPI.startGeneration({
-    repoPath,
-    commitCount,
-    totalLines
-  });
+  window.electronAPI.startGeneration({ repoPath, commitCount, totalLines });
 });
 
-// 停止
+// ─── Stop ───
 stopBtn.addEventListener('click', () => {
   window.electronAPI.stopGeneration();
-  addLog('⏹ 已发送停止信号', 'warning');
+  addLog('已发送停止信号...', 'warning');
   startBtn.disabled = false;
   stopBtn.disabled = true;
 });
 
-// 监听日志消息
+// ─── IPC listeners ───
 window.electronAPI.onLog((text) => {
   const type = text.startsWith('✅') ? 'success'
     : text.startsWith('⚠️') ? 'warning'
     : text.startsWith('🔀') ? 'branch'
-    : text.startsWith('🚀') ? 'info'
     : '';
   addLog(text, type);
 });
 
-// 监听进度更新
 window.electronAPI.onProgress((data) => {
-  updateStats(data);
+  updateProgress(data);
 });
 
-// 监听完成
 window.electronAPI.onDone((data) => {
-  addLog(`🎉 完成！共生成 ${data.commits} 个 commit，${data.lines} 行代码`, 'success');
+  addLog('');
+  addLog('─'.repeat(44), 'dim');
+  addLog(`完成  ${data.commits} 个 commit · ${data.lines.toLocaleString()} 行`, 'success');
+  setStatus('done');
   startBtn.disabled = false;
   stopBtn.disabled = true;
   statsEl.textContent = '完成';
 });
 
-// 监听错误
 window.electronAPI.onError((msg) => {
-  addLog(`❌ 错误: ${msg}`, 'warning');
+  addLog(`错误: ${msg}`, 'warning');
+  setStatus('error');
   startBtn.disabled = false;
   stopBtn.disabled = true;
 });
