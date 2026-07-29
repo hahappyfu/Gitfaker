@@ -1,0 +1,27 @@
+{
+  "name": "gitfaker",
+  "version": "1.0.0",
+  "description": "Git commit 生成器 - 批量生成拟真 commit",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.gitfaker.app",
+    "productName": "GitFaker",
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "core/**/*",
+      "renderer/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
