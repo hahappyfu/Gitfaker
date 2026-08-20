@@ -5,14 +5,38 @@ const fs = require('fs');
 // Windows 下自动查找 git 路径
 function getGitPath() {
   if (process.platform !== 'win32') return 'git';
-  // 常见安装路径
+
+  // 1. 优先用 where 命令（尊重 PATH，覆盖 Scoop / 自定义安装等）
+  for (const cmd of ['where git', 'where.exe git']) {
+    try {
+      const out = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', shell: true }).trim();
+      const first = out.split(/\r?\n/)[0].trim();
+      if (first && fs.existsSync(first)) return `"${first}"`;
+    } catch {}
+  }
+
+  // 2. 常见安装路径（含 Scoop、GitHub Desktop 等）
+  const userProfile = process.env.USERPROFILE || process.env.HOME || '';
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
   const paths = [
     'C:\\Program Files\\Git\\bin\\git.exe',
     'C:\\Program Files (x86)\\Git\\bin\\git.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Git', 'bin', 'git.exe'),
-    path.join(process.env.ProgramFiles || '', 'Git', 'bin', 'git.exe'),
+    path.join(programFiles, 'Git', 'bin', 'git.exe'),
+    path.join(programFilesX86, 'Git', 'bin', 'git.exe'),
+    path.join(localAppData, 'Programs', 'Git', 'bin', 'git.exe'),
+    path.join(localAppData, 'Git', 'bin', 'git.exe'),
+    path.join(userProfile, 'scoop', 'shims', 'git.exe'),
+    path.join(userProfile, 'scoop', 'apps', 'git', 'current', 'bin', 'git.exe'),
+    path.join(userProfile, 'scoop', 'apps', 'git', 'current', 'cmd', 'git.exe'),
   ];
+  // 去重
+  const seen = new Set();
   for (const p of paths) {
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
     try {
       if (fs.existsSync(p)) {
         console.log('Found git at:', p);
@@ -132,10 +156,23 @@ function isGitRepo(cwd) {
  */
 function checkGitAvailable() {
   const debugInfo = [];
+  const extraCandidates = [];
+  if (process.platform === 'win32') {
+    try {
+      const whereOut = execSync('where git', { encoding: 'utf-8', stdio: 'pipe', shell: true }).trim();
+      const first = whereOut.split(/\r?\n/)[0].trim();
+      if (first) extraCandidates.push(`"${first}" --version`);
+    } catch (e) {
+      debugInfo.push(`❌ where git: ${e.message.split('\n')[0]}`);
+    }
+  }
   const commands = process.platform === 'win32'
-    ? [`${GIT} --version`, 'git.exe --version', 'git --version']
+    ? [`${GIT} --version`, ...extraCandidates, 'git.exe --version', 'git --version']
     : ['git --version'];
-  for (const cmd of commands) {
+  // 去重
+  const seen = new Set();
+  const deduped = commands.filter(c => { if (seen.has(c)) return false; seen.add(c); return true; });
+  for (const cmd of deduped) {
     try {
       const result = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', shell: true });
       debugInfo.push(`✅ ${cmd}: ${result.trim()}`);

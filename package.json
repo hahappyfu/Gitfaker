@@ -1,6 +1,6 @@
 {
   "name": "gitfaker",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Git commit 生成器 - 批量生成拟真 commit",
   "main": "main.js",
   "scripts": {
