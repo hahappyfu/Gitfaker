@@ -52,7 +52,14 @@
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>
             停止
           </button>
+          <button id="pushBtn" class="btn-push" disabled title="将本地 commit 推送到远端">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v9M4 7l4-4 4 4"/><path d="M2 12h12"/></svg>
+            推送到远端
+          </button>
         </div>
+
+        <!-- 增量对比卡片 -->
+        <div id="summaryCard" class="summary-card" style="display:none"></div>
 
         <!-- 状态指示灯 -->
         <div class="status-lights">

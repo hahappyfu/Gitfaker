@@ -2,19 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const { generateCodeLines } = require('./random-code');
 
-// 常见的文件扩展名和对应目录
-const FILE_TYPES = [
-  { ext: '.js', dir: 'src' },
-  { ext: '.ts', dir: 'src' },
-  { ext: '.py', dir: 'src' },
-  { ext: '.go', dir: 'pkg' },
-  { ext: '.java', dir: 'src/main/java' },
-  { ext: '.json', dir: 'config' },
-  { ext: '.yaml', dir: 'config' },
-  { ext: '.md', dir: 'docs' },
-  { ext: '.css', dir: 'src/styles' },
-  { ext: '.html', dir: 'src/views' },
-];
+const FILE_TYPE_GROUPS = {
+  source: { weight: 0.7, types: [
+    { ext: '.js', dir: 'src' }, { ext: '.ts', dir: 'src' },
+    { ext: '.py', dir: 'src' }, { ext: '.go', dir: 'pkg' },
+    { ext: '.java', dir: 'src/main/java' },
+  ]},
+  config: { weight: 0.2, types: [
+    { ext: '.json', dir: 'config' }, { ext: '.yaml', dir: 'config' },
+  ]},
+  docs: { weight: 0.1, types: [
+    { ext: '.md', dir: 'docs' }, { ext: '.css', dir: 'src/styles' },
+    { ext: '.html', dir: 'src/views' },
+  ]},
+};
 
 const FILE_NAMES = [
   'index', 'main', 'app', 'utils', 'helpers', 'config',
@@ -28,11 +29,13 @@ const repoFiles = []; // 跟踪仓库中已创建的文件
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-/**
- * 获取一个随机的文件路径（相对于 repo 根目录）
- */
 function getRandomFilePath(repoRoot) {
-  const ft = pick(FILE_TYPES);
+  const r = Math.random();
+  let group;
+  if (r < 0.7) group = FILE_TYPE_GROUPS.source;
+  else if (r < 0.9) group = FILE_TYPE_GROUPS.config;
+  else group = FILE_TYPE_GROUPS.docs;
+  const ft = group.types[Math.floor(Math.random() * group.types.length)];
   const name = pick(FILE_NAMES) + ft.ext;
   return path.join(repoRoot, ft.dir, name);
 }
@@ -40,14 +43,15 @@ function getRandomFilePath(repoRoot) {
 /**
  * 创建新文件
  * @param {string} repoRoot - 仓库根目录
+ * @param {number} lineCount - 精确行数（可选，不传则随机 10-49）
  * @returns {string} 创建的文件路径
  */
-function createNewFile(repoRoot) {
+function createNewFile(repoRoot, lineCount) {
   const filePath = getRandomFilePath(repoRoot);
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
-  const lineCount = Math.floor(Math.random() * 40) + 10;
-  const content = generateCodeLines(lineCount);
+  const count = (typeof lineCount === 'number' && lineCount > 0) ? lineCount : Math.floor(Math.random() * 40) + 10;
+  const content = generateCodeLines(count);
   fs.writeFileSync(filePath, content, 'utf-8');
   repoFiles.push(filePath);
   return filePath;
@@ -56,13 +60,14 @@ function createNewFile(repoRoot) {
 /**
  * 追加内容到已有文件
  * @param {string} repoRoot - 仓库根目录
+ * @param {number} lineCount - 精确行数（可选，不传则随机 3-22）
  * @returns {string} 修改的文件路径，如果没有可用文件则创建新文件
  */
-function appendToFile(repoRoot) {
-  if (repoFiles.length === 0) return createNewFile(repoRoot);
+function appendToFile(repoRoot, lineCount) {
+  if (repoFiles.length === 0) return createNewFile(repoRoot, lineCount);
   const filePath = pick(repoFiles);
-  const lineCount = Math.floor(Math.random() * 20) + 3;
-  const content = generateCodeLines(lineCount);
+  const count = (typeof lineCount === 'number' && lineCount > 0) ? lineCount : Math.floor(Math.random() * 20) + 3;
+  const content = generateCodeLines(count);
   fs.appendFileSync(filePath, content, 'utf-8');
   return filePath;
 }
@@ -110,20 +115,21 @@ function deleteRandomFile(repoRoot) {
  * 根据操作类型执行文件操作
  * @param {string} repoRoot - 仓库根目录
  * @param {string} operation - 操作类型: 'create' | 'append' | 'modify' | 'delete'
+ * @param {number} lineCount - 精确行数（可选）
  * @returns {{ operation: string, filePath: string|null }}
  */
-function performFileOperation(repoRoot, operation) {
+function performFileOperation(repoRoot, operation, lineCount) {
   switch (operation) {
     case 'create':
-      return { operation: 'create', filePath: createNewFile(repoRoot) };
+      return { operation: 'create', filePath: createNewFile(repoRoot, lineCount) };
     case 'append':
-      return { operation: 'append', filePath: appendToFile(repoRoot) };
+      return { operation: 'append', filePath: appendToFile(repoRoot, lineCount) };
     case 'modify':
       return { operation: 'modify', filePath: modifyFile(repoRoot) };
     case 'delete':
       return { operation: 'delete', filePath: deleteRandomFile(repoRoot) };
     default:
-      return { operation: 'append', filePath: appendToFile(repoRoot) };
+      return { operation: 'append', filePath: appendToFile(repoRoot, lineCount) };
   }
 }
 

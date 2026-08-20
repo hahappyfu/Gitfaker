@@ -1,6 +1,7 @@
 // ─── DOM ───
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const pushBtn = document.getElementById('pushBtn');
 const browseBtn = document.getElementById('browseBtn');
 const logOutput = document.getElementById('logOutput');
 const statsEl = document.getElementById('stats');
@@ -11,11 +12,15 @@ const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const progressCommits = document.getElementById('progressCommits');
 const progressLines = document.getElementById('progressLines');
+const summaryCard = document.getElementById('summaryCard');
 
 const lightIdle = document.getElementById('lightIdle');
 const lightRunning = document.getElementById('lightRunning');
 const lightDone = document.getElementById('lightDone');
 const lightError = document.getElementById('lightError');
+
+// ─── State ───
+let currentRepoPath = '';
 
 // ─── Status lights ───
 function setStatus(state) {
@@ -43,13 +48,38 @@ function addLog(text, type = '') {
   line.textContent = text;
   logOutput.appendChild(line);
 
-  // 脉冲扫过动画
   requestAnimationFrame(() => {
     line.classList.add('flash');
     setTimeout(() => line.classList.remove('flash'), 400);
   });
 
   logOutput.scrollTop = logOutput.scrollHeight;
+}
+
+// ─── Summary Card ───
+function showSummary(data) {
+  summaryCard.style.display = 'block';
+  summaryCard.className = 'summary-card';
+  const targetCommits = data.targetCommits || data.commits;
+  const targetLines = data.targetLines || data.lines;
+  const actualCommits = data.actualCommits ?? data.commits;
+  const actualLines = data.actualLines ?? data.lines;
+  const files = data.changedFiles || [];
+  const filePreview = files.length > 0
+    ? files.slice(0, 5).join(', ') + (files.length > 5 ? ` ...等${files.length}个文件` : '')
+    : '—';
+
+  summaryCard.innerHTML = `
+    <div class="summary-title">本次生成统计</div>
+    <div class="summary-row"><span class="summary-label">目标</span><span>${targetCommits} commit · ${targetLines.toLocaleString()} 行</span></div>
+    <div class="summary-row"><span class="summary-label">实际</span><span class="summary-actual">${actualCommits} commit · ${actualLines.toLocaleString()} 行 · ${files.length} 文件</span></div>
+    <div class="summary-files">${filePreview}</div>
+  `;
+}
+
+function hideSummary() {
+  summaryCard.style.display = 'none';
+  summaryCard.innerHTML = '';
 }
 
 // ─── Progress ───
@@ -86,7 +116,9 @@ startBtn.addEventListener('click', () => {
     return;
   }
 
+  currentRepoPath = repoPath;
   clearLog();
+  hideSummary();
   progressBar.style.display = 'block';
   progressFill.style.width = '0%';
   setStatus('running');
@@ -99,6 +131,8 @@ startBtn.addEventListener('click', () => {
 
   startBtn.disabled = true;
   stopBtn.disabled = false;
+  pushBtn.disabled = true;
+  pushBtn.textContent = '推送到远端';
 
   window.electronAPI.startGeneration({ repoPath, commitCount, totalLines });
 });
@@ -111,11 +145,32 @@ stopBtn.addEventListener('click', () => {
   stopBtn.disabled = true;
 });
 
+// ─── Push ───
+pushBtn.addEventListener('click', async () => {
+  if (!currentRepoPath) {
+    addLog('请先生成 commit', 'warning');
+    return;
+  }
+  pushBtn.disabled = true;
+  pushBtn.textContent = '推送中...';
+  try {
+    const result = await window.electronAPI.pushToRemote(currentRepoPath);
+    addLog(`✅ 已推送到 ${result.branch}`, 'success');
+    pushBtn.textContent = '已推送';
+  } catch (e) {
+    const msg = e.message || String(e);
+    addLog(`⚠️ 推送失败: ${msg}`, 'warning');
+    pushBtn.disabled = false;
+    pushBtn.textContent = '重试推送';
+  }
+});
+
 // ─── IPC listeners ───
 window.electronAPI.onLog((text) => {
   const type = text.startsWith('✅') ? 'success'
     : text.startsWith('⚠️') ? 'warning'
     : text.startsWith('🔀') ? 'branch'
+    : text.startsWith('📊') || text.startsWith('💡') ? 'info'
     : '';
   addLog(text, type);
 });
@@ -125,13 +180,16 @@ window.electronAPI.onProgress((data) => {
 });
 
 window.electronAPI.onDone((data) => {
+  showSummary(data);
   addLog('');
   addLog('─'.repeat(44), 'dim');
-  addLog(`完成  ${data.commits} 个 commit · ${data.lines.toLocaleString()} 行`, 'success');
+  addLog(`完成  ${data.actualCommits ?? data.commits} 个 commit · ${(data.actualLines ?? data.lines).toLocaleString()} 行`, 'success');
   setStatus('done');
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  statsEl.textContent = '完成';
+  pushBtn.disabled = false;
+  pushBtn.textContent = `推送到远端 (${data.actualCommits ?? data.commits} commit)`;
+  statsEl.textContent = '完成 · 待推送';
 });
 
 window.electronAPI.onError((msg) => {

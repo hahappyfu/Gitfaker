@@ -7,30 +7,20 @@ const gitOps = require('./git-ops');
 const fs = require('fs');
 const path = require('path');
 
-/**
- * 根据权重随机选择文件操作类型
- */
 function pickOperation() {
   const rand = Math.random();
-  if (rand < 0.60) return 'append';   // 60% 追加
-  if (rand < 0.80) return 'create';   // 20% 创建
-  if (rand < 0.90) return 'modify';   // 10% 修改
-  return 'delete';                     // 10% 删除
+  if (rand < 0.60) return 'append';
+  if (rand < 0.80) return 'create';
+  if (rand < 0.90) return 'modify';
+  return 'delete';
 }
 
-/**
- * 执行单次 commit（用于直接在主分支上提交）
- * @param {string} repoRoot - 仓库根目录
- * @param {Date} date - commit 时间
- * @param {number} linesPerCommit - 每次 commit 的行数
- */
 function performSingleCommit(repoRoot, date, linesPerCommit) {
   const operation = pickOperation();
-  const result = performFileOperation(repoRoot, operation);
+  const result = performFileOperation(repoRoot, operation, linesPerCommit);
 
   if (result.operation === 'delete' && result.filePath === null) {
-    // 如果没有文件可删除，改为追加
-    performFileOperation(repoRoot, 'append');
+    performFileOperation(repoRoot, 'append', linesPerCommit);
   }
 
   gitOps.addAll(repoRoot);
@@ -40,27 +30,13 @@ function performSingleCommit(repoRoot, date, linesPerCommit) {
   return { message: msg, operation: result.operation, filePath: result.filePath };
 }
 
-/**
- * 主编排流程
- * @param {Object} options
- * @param {string} options.repoPath - 仓库路径
- * @param {number} options.commitCount - 提交次数
- * @param {number} options.totalLines - 代码总行数
- * @param {Function} options.onLog - 日志回调
- * @param {Function} options.onProgress - 进度回调
- * @param {AbortSignal} options.signal - 中断信号
- */
 async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signal }) {
-  // 检查 git 是否可用
   if (!gitOps.checkGitAvailable()) {
     throw new Error('未检测到 git 命令。\n\n可能原因：\n1. 未安装 Git for Windows\n2. 安装时未勾选"Add to PATH"\n3. 需要重启电脑\n\n下载 Git：https://git-scm.com/download/win');
   }
 
-  // 验证仓库
   if (!gitOps.isGitRepo(repoPath)) {
-    // 进一步诊断
-    const fs = require('fs');
-    const gitDir = require('path').join(repoPath, '.git');
+    const gitDir = path.join(repoPath, '.git');
     const hasGitDir = fs.existsSync(gitDir);
     let detail = '';
     if (!hasGitDir) {
@@ -71,10 +47,9 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
 
   resetFiles();
 
-  // 记录默认分支名，后面 push 时需要切回来
-  const mainBranch = gitOps.getDefaultBranch(repoPath);
+  let beforeHead = null;
+  try { beforeHead = gitOps.getHeadCommit(repoPath); } catch {}
 
-  // 计算时间分布
   const firstCommitDate = gitOps.getFirstCommitDate(repoPath);
   const endDate = new Date();
   const dates = generateTimeDistribution(firstCommitDate, endDate, commitCount);
@@ -97,7 +72,6 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
       break;
     }
 
-    // 决定是否创建 feature 分支
     if (shouldCreateBranch()) {
       const branchCommitCount = Math.min(getBranchCommitCount(), commitCount - dateIndex);
       const branchDates = dates.slice(dateIndex, dateIndex + branchCommitCount);
@@ -119,7 +93,6 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
       completedCommits += branchCommitCount;
       dateIndex += branchCommitCount;
     } else {
-      // 直接在主分支上提交
       const date = dates[dateIndex];
       const result = performSingleCommit(repoPath, date, linesPerCommit);
       onLog(`✅ [${completedCommits + 1}/${commitCount}] ${result.message} (${result.operation})`);
@@ -136,30 +109,47 @@ async function run({ repoPath, commitCount, totalLines, onLog, onProgress, signa
     });
   }
 
-  // 最后几个 commit 补齐余数
   if (extraLines > 0 && completedCommits >= commitCount) {
     const lastDate = dates[dates.length - 1] || new Date();
-    for (let i = 0; i < extraLines; i++) {
-      performFileOperation(repoPath, 'append');
-    }
+    const content = generateCodeLines(extraLines);
+    const fp = path.join(repoPath, 'src', 'extra.js');
+    fs.mkdirSync(path.dirname(fp), { recursive: true });
+    fs.appendFileSync(fp, content, 'utf-8');
     gitOps.addAll(repoPath);
     const msg = generateCommitMessage();
     gitOps.commitWithDate(msg, lastDate, repoPath);
     onLog(`✅ 补齐 ${extraLines} 行`);
+    generatedLines += extraLines;
+  }
+
+  let actualCommits = completedCommits;
+  let actualLines = generatedLines;
+  let changedFiles = [];
+  if (beforeHead) {
+    try {
+      const countStr = gitOps.getCommitCountSince(beforeHead, repoPath);
+      const parsed = parseInt(countStr, 10);
+      if (!isNaN(parsed) && parsed > 0) actualCommits = parsed;
+    } catch {}
+    try {
+      const stat = gitOps.getDiffShortStat(beforeHead, repoPath);
+      const m = stat.match(/(\d+) insertion/);
+      if (m) actualLines = parseInt(m[1], 10);
+    } catch {}
+    try {
+      changedFiles = gitOps.getChangedFilesSince(beforeHead, repoPath);
+    } catch {}
   }
 
   onLog('---');
-  onLog('📤 尝试 push 到远端...');
-  try {
-    // 切回主分支再 push
-    gitOps.checkout(mainBranch, repoPath);
-    gitOps.push(repoPath);
-    onLog('✅ push 成功');
-  } catch (e) {
-    onLog(`⚠️ push 失败：${e.message}（本地 commit 已完成）`);
+  onLog(`📊 本次增量: ${actualCommits} commit · ${actualLines} 行 · ${changedFiles.length} 文件`);
+  if (changedFiles.length > 0) {
+    const preview = changedFiles.slice(0, 5).join(', ') + (changedFiles.length > 5 ? ` ...等${changedFiles.length}个文件` : '');
+    onLog(`   变更: ${preview}`);
   }
+  onLog('💡 请确认增量统计，满意后点击「推送到远端」');
 
-  return { completedCommits, generatedLines };
+  return { completedCommits, generatedLines, actualCommits, actualLines, changedFiles, beforeHead, targetCommits: commitCount, targetLines: totalLines };
 }
 
 module.exports = { run };

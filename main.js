@@ -21,7 +21,6 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 
-// IPC: 打开文件夹选择对话框
 ipcMain.handle('select-directory', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory']
@@ -31,6 +30,7 @@ ipcMain.handle('select-directory', async () => {
 });
 
 const { run } = require('./core/orchestrator');
+const gitOps = require('./core/git-ops');
 
 let currentAbortController = null;
 
@@ -38,7 +38,6 @@ ipcMain.on('start-generation', async (event, options) => {
   const { repoPath, commitCount, totalLines } = options;
   const webContents = event.sender;
 
-  // 创建中断控制器
   currentAbortController = new AbortController();
 
   try {
@@ -53,7 +52,12 @@ ipcMain.on('start-generation', async (event, options) => {
 
     webContents.send('generation-done', {
       commits: result.completedCommits,
-      lines: result.generatedLines
+      lines: result.generatedLines,
+      actualCommits: result.actualCommits,
+      actualLines: result.actualLines,
+      changedFiles: result.changedFiles,
+      targetCommits: result.targetCommits,
+      targetLines: result.targetLines
     });
   } catch (e) {
     webContents.send('generation-error', e.message);
@@ -66,4 +70,14 @@ ipcMain.on('stop-generation', () => {
   if (currentAbortController) {
     currentAbortController.abort();
   }
+});
+
+ipcMain.handle('push-to-remote', async (event, repoPath) => {
+  const mainBranch = gitOps.getDefaultBranch(repoPath);
+  const currentBranch = gitOps.getCurrentBranch(repoPath);
+  if (currentBranch !== mainBranch) {
+    gitOps.checkout(mainBranch, repoPath);
+  }
+  gitOps.push(repoPath);
+  return { branch: mainBranch };
 });

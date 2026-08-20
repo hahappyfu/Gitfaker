@@ -167,6 +167,35 @@ function getFirstCommitDate(cwd) {
 }
 
 /**
+ * 获取当前 HEAD commit
+ */
+function getHeadCommit(cwd) {
+  return runGit('rev-parse HEAD', cwd);
+}
+
+/**
+ * 统计自 since 之后的 commit 数
+ */
+function getCommitCountSince(since, cwd) {
+  return runGit(`rev-list --count ${since}..HEAD`, cwd);
+}
+
+/**
+ * 统计自 since 之后的 diff 概览
+ */
+function getDiffShortStat(since, cwd) {
+  return runGit(`diff --shortstat ${since}..HEAD`, cwd);
+}
+
+/**
+ * 获取自 since 之后变更的文件列表
+ */
+function getChangedFilesSince(since, cwd) {
+  const out = runGit(`diff --name-only ${since}..HEAD`, cwd);
+  return out ? out.split('\n').filter(Boolean) : [];
+}
+
+/**
  * 获取默认分支名（main 或 master）
  */
 function getDefaultBranch(cwd) {
@@ -195,5 +224,6 @@ function getCurrentBranch(cwd) {
 module.exports = {
   runGit, addAll, commit, commitWithDate, createBranch, checkout,
   merge, deleteBranch, push, isGitRepo, getFirstCommitDate, checkGitAvailable,
-  getCurrentBranch, getDefaultBranch
+  getCurrentBranch, getDefaultBranch,
+  getHeadCommit, getCommitCountSince, getDiffShortStat, getChangedFilesSince
 };
